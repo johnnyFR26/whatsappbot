@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robo online</title>
+    <style>
+        #messages {
+            margin-top: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+        .from {
+            font-weight: bold;
+        }
+        .body {
+            margin-top: 5px;
+        }
+        #send-message {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="messages"></div>
+
+    <div id="send-message">
+        <input type="text" id="phone-number-input" placeholder="Digite o número (ex: 5511999999999)" />
+        <input type="text" id="message-input" placeholder="Digite sua mensagem aqui" />
+        <button id="send-button">Enviar Mensagem</button>
+    </div>
+
+    <script>
+        const divQr = document.getElementById('root');
+        const messagesDiv = document.getElementById('messages');
+        const phoneNumberInput = document.getElementById('phone-number-input');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // Conectar ao WebSocket do servidor
+        const socket = new WebSocket('ws://localhost:3000');
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'qr') {
+                // Gerar uma imagem de QR Code no frontend
+                divQr.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(data.qr) + '" />';
+            }
+
+            if (data.type === 'status') {
+                alert(data.message); // Exibir mensagem de status
+            }
+
+            if (data.type === 'message') {
+                // Exibir mensagens recebidas
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+
+                messageElement.innerHTML = `
+                    <div class="from">From: ${data.from}</div>
+                    <div class="body">Message: ${data.body}</div>
+                `;
+
+                messagesDiv.appendChild(messageElement);
+            }
+        };
+
+        socket.onopen = () => {
+            console.log('Conectado ao WebSocket');
+        };
+
+        socket.onclose = () => {
+            console.log('Desconectado do WebSocket');
+        };
+
+        // Enviar mensagem ao backend com o número de telefone
+        sendButton.addEventListener('click', () => {
+            const phoneNumber = phoneNumberInput.value;
+            const message = messageInput.value;
+
+            if (phoneNumber && message) {
+                socket.send(JSON.stringify({
+                    type: 'send_message',
+                    phoneNumber: phoneNumber,
+                    message: message
+                }));
+
+                // Limpar os campos de entrada
+                phoneNumberInput.value = '';
+                messageInput.value = '';
+            } else {
+                alert('Por favor, insira o número de telefone e a mensagem.');
+            }
+        });
+    </script>
+</body>
+</html>
